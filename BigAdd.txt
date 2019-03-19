@@ -1,0 +1,76 @@
+DELIMITER $$
+
+CREATE FUNCTION `BigAdd`(`First` VARCHAR(200), `Second` VARCHAR(200))
+	RETURNS varchar(200)
+	LANGUAGE SQL
+	DETERMINISTIC
+	NO SQL
+	SQL SECURITY DEFINER
+	COMMENT 'Adds two big numbers'
+BEGIN
+	-- Add two numbers together and return the result.
+	DECLARE Result VARCHAR(200);
+	DECLARE FirstLength INT;
+	DECLARE SecondLength INT;
+	DECLARE ANumber VARCHAR(10);
+	DECLARE AddLoop INT;
+	DECLARE LoopEnd INT;
+	DECLARE FirstDigit INT;
+	DECLARE SecondDigit INT;
+	DECLARE Carry INT;
+	SET ANumber = '0123456789';
+	SET Result = '';
+	SET FirstLength = LENGTH(First);
+	SET SecondLength = LENGTH(Second);
+	IF COALESCE(FirstLength,0) = 0 OR COALESCE(SecondLength,0) = 0 THEN
+		-- One of the numbers is null.
+		RETURN Result;
+	END IF;
+	IF FirstLength > SecondLength THEN
+		SET LoopEnd = FirstLength;
+	ELSE
+		SET LoopEnd = SecondLength;
+	END IF;
+	SET AddLoop = 1;
+	SET Carry = 0;
+	WHILE AddLoop <= LoopEnd DO
+		-- Get the next digit of the first number.
+		IF AddLoop > FirstLength THEN
+			SET FirstDigit = 0;
+		ELSE
+			SET FirstDigit = LOCATE(SUBSTR(First,FirstLength-AddLoop+1,1),ANumber)-1;
+			IF FirstDigit < 0 THEN
+				-- This is not a digit.
+				SET Result = '';
+				RETURN Result;
+			END IF;
+		END IF;
+		-- Get the next digit of the second number.
+		IF AddLoop > SecondLength THEN
+			SET SecondDigit = 0;
+		ELSE
+			SET SecondDigit = LOCATE(SUBSTR(Second,SecondLength-AddLoop+1,1),ANumber)-1;
+			IF SecondDigit < 0 THEN
+				-- This is not a digit.
+				SET Result = '';
+				RETURN Result;
+			END IF;
+		END IF;
+		-- Add the two digits.
+		SET FirstDigit = FirstDigit + SecondDigit + Carry;
+		SET SecondDigit = FirstDigit % 10;
+		SET Carry = (FirstDigit-SecondDigit) / 10;
+		-- Append the answer to the result number.
+		SET Result = CONCAT(SUBSTR(ANumber,SecondDigit+1,1),Result);
+		SET AddLoop = AddLoop + 1;
+	END WHILE;
+	IF Carry > 0 THEN
+		SET Result = CONCAT(SUBSTR(ANumber,Carry+1,1),Result);
+	END IF;
+	-- Reduce the number if necessary by removing leading zeros.
+	WHILE LENGTH(Result)>1 AND SUBSTR(Result,1,1)='0' DO
+		SET Result = SUBSTR(Result,2,LENGTH(Result)-1);
+	END WHILE;
+	
+	RETURN Result;	
+END$$
